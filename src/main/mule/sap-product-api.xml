@@ -1,0 +1,315 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:sap="http://www.mulesoft.org/schema/mule/sap"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/mule-apikit http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd 
+http://www.mulesoft.org/schema/mule/sap http://www.mulesoft.org/schema/mule/sap/current/mule-sap.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+
+	<http:listener-config
+		xmlns:http="http://www.mulesoft.org/schema/mule/http"
+		name="customer-api-sap-httpListenerConfig">
+		<http:listener-connection host="0.0.0.0"
+			port="8081" />
+	</http:listener-config>
+
+	<apikit:config name="sap-product-api-config"
+		api="sap-product-api.raml" outboundHeadersMapName="outboundHeaders"
+		httpStatusVarName="httpStatus" />
+	<flow name="sap-product-api-main">
+		<http:listener
+			config-ref="customer-api-sap-httpListenerConfig" path="/api/*">
+			<http:response
+				statusCode="#[vars.httpStatus default 200]">
+				<http:headers>#[vars.outboundHeaders default {}]</http:headers>
+			</http:response>
+			<http:error-response
+				statusCode="#[vars.httpStatus default 500]">
+				<http:body>#[payload]</http:body>
+				<http:headers>#[vars.outboundHeaders default {}]</http:headers>
+			</http:error-response>
+		</http:listener>
+		<apikit:router config-ref="sap-product-api-config" />
+		<error-handler>
+			<on-error-propagate type="APIKIT:BAD_REQUEST">
+				<ee:transform
+					xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+					xsi:schemaLocation="http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+					<ee:message>
+						<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Bad request"}]]></ee:set-payload>
+					</ee:message>
+					<ee:variables>
+						<ee:set-variable variableName="httpStatus">400
+						</ee:set-variable>
+					</ee:variables>
+				</ee:transform>
+			</on-error-propagate>
+			<on-error-propagate type="APIKIT:NOT_FOUND">
+				<ee:transform
+					xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+					xsi:schemaLocation="http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+					<ee:message>
+						<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Resource not found"}]]></ee:set-payload>
+					</ee:message>
+					<ee:variables>
+						<ee:set-variable variableName="httpStatus">404
+						</ee:set-variable>
+					</ee:variables>
+				</ee:transform>
+			</on-error-propagate>
+			<on-error-propagate
+				type="APIKIT:METHOD_NOT_ALLOWED">
+				<ee:transform
+					xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+					xsi:schemaLocation="http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+					<ee:message>
+						<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Method not allowed"}]]></ee:set-payload>
+					</ee:message>
+					<ee:variables>
+						<ee:set-variable variableName="httpStatus">405
+						</ee:set-variable>
+					</ee:variables>
+				</ee:transform>
+			</on-error-propagate>
+			<on-error-propagate type="APIKIT:NOT_ACCEPTABLE">
+				<ee:transform
+					xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+					xsi:schemaLocation="http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+					<ee:message>
+						<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Not acceptable"}]]></ee:set-payload>
+					</ee:message>
+					<ee:variables>
+						<ee:set-variable variableName="httpStatus">406
+						</ee:set-variable>
+					</ee:variables>
+				</ee:transform>
+			</on-error-propagate>
+			<on-error-propagate
+				type="APIKIT:UNSUPPORTED_MEDIA_TYPE">
+				<ee:transform
+					xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+					xsi:schemaLocation="http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+					<ee:message>
+						<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Unsupported media type"}]]></ee:set-payload>
+					</ee:message>
+					<ee:variables>
+						<ee:set-variable variableName="httpStatus">415
+						</ee:set-variable>
+					</ee:variables>
+				</ee:transform>
+			</on-error-propagate>
+			<on-error-propagate type="APIKIT:NOT_IMPLEMENTED">
+				<ee:transform
+					xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+					xsi:schemaLocation="http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+					<ee:message>
+						<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Not Implemented"}]]></ee:set-payload>
+					</ee:message>
+					<ee:variables>
+						<ee:set-variable variableName="httpStatus">501
+						</ee:set-variable>
+					</ee:variables>
+				</ee:transform>
+			</on-error-propagate>
+		</error-handler>
+	</flow>
+	<flow name="sap-product-api-console">
+		<http:listener
+			config-ref="customer-api-sap-httpListenerConfig" path="/console/*">
+			<http:response
+				statusCode="#[vars.httpStatus default 200]">
+				<http:headers>#[vars.outboundHeaders default {}]</http:headers>
+			</http:response>
+			<http:error-response
+				statusCode="#[vars.httpStatus default 500]">
+				<http:body>#[payload]</http:body>
+				<http:headers>#[vars.outboundHeaders default {}]</http:headers>
+			</http:error-response>
+		</http:listener>
+		<apikit:console config-ref="sap-product-api-config" />
+		<error-handler>
+			<on-error-propagate type="APIKIT:NOT_FOUND">
+				<ee:transform
+					xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+					xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+					<ee:message>
+						<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Resource not found"}]]></ee:set-payload>
+					</ee:message>
+					<ee:variables>
+						<ee:set-variable variableName="httpStatus">404
+						</ee:set-variable>
+					</ee:variables>
+				</ee:transform>
+			</on-error-propagate>
+		</error-handler>
+	</flow>
+	<flow name="get:\products:sap-product-api-config">
+		<logger level="INFO" message="get:\products:api-config"
+			doc:description="hola" />
+		<ee:transform doc:name="Transform Message"
+			doc:id="ae550351-f382-4c94-98ff-940f0728b310">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/xml
+
+var material = attributes.queryParams.query default "M" 
+
+---
+{
+	BAPI_MATERIAL_GETLIST: {
+		"import": {
+			MAXROWS: 10
+		},
+		tables: {
+			MATNRSELECTION: {
+				row: {
+					SIGN: "I",
+					OPTION: "CP",
+					MATNR_LOW: "*" ++ material ++ "*"
+				}
+			}
+		}
+	}
+}
+]]></ee:set-payload>
+			</ee:message>
+			<ee:variables>
+				<ee:set-variable variableName="materialDetails"><![CDATA[%dw 2.0
+output application/java
+---
+[]]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<sap:sync-rfc doc:name="Synchronous Remote Function Call"
+			doc:id="72e76c68-ce47-4100-ae25-7e3a578faa37" config-ref="SAP_Config"
+			key="BAPI_MATERIAL_GETLIST" />
+		<ee:transform doc:name="Transform Message"
+			doc:id="392e2e03-b325-41c8-9a46-e0caebd9c741">
+			<ee:message>
+			</ee:message>
+			<ee:variables>
+				<ee:set-variable variableName="materialIds"><![CDATA[%dw 2.0
+output application/java
+---
+payload.BAPI_MATERIAL_GETLIST.tables.MATNRLIST.*row.MATERIAL]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<foreach doc:name="For Each"
+			doc:id="631291f9-c05b-4109-89ae-3184ab323c91"
+			collection="vars.materialIds">
+			<ee:transform doc:name="Transform Message"
+				doc:id="24a4f2a2-c474-4634-92ea-2652e815ccbb">
+				<ee:message>
+				</ee:message>
+				<ee:variables>
+					<ee:set-variable
+						variableName="getMaterialDetailReq"><![CDATA[%dw 2.0
+output application/xml
+---
+{
+	BAPI_MATERIAL_GET_DETAIL: {
+		"import": {
+			MATERIAL: payload,
+			PLANT: "3200",
+			VALUATIONAREA: "3200"
+ 		}
+	}
+}]]></ee:set-variable>
+				</ee:variables>
+			</ee:transform>
+			<sap:sync-rfc
+				doc:name="Synchronous Remote Function Call"
+				doc:id="ca2cada8-e87b-4f6a-8e18-210c9db0d85b"
+				config-ref="SAP_Config" key="BAPI_MATERIAL_GET_DETAIL"
+				target="getMaterialDetailResp">
+				<sap:content><![CDATA[#[vars.getMaterialDetailReq]]]></sap:content>
+			</sap:sync-rfc>
+			<ee:transform doc:name="Transform Message"
+				doc:id="fa0399a6-798a-432e-98b1-c74eb265edc9">
+				<ee:message>
+				</ee:message>
+				<ee:variables>
+					<ee:set-variable variableName="getMaterialStockReq"><![CDATA[%dw 2.0
+output application/xml
+---
+{
+	BAPI_MATERIAL_STOCK_REQ_LIST: {
+		"import": {
+			GET_IND_LINES: "X",
+			MATERIAL: payload,
+			PLANT: "3200",
+			PLAN_SCENARIO: "000"
+		}
+	}
+}]]></ee:set-variable>
+				</ee:variables>
+			</ee:transform>
+			<sap:sync-rfc
+				doc:name="Synchronous Remote Function Call"
+				doc:id="05e4978e-0a8a-413a-9473-5d21b776a114"
+				config-ref="SAP_Config" key="BAPI_MATERIAL_STOCK_REQ_LIST"
+				target="getMaterialStockResp">
+				<sap:content><![CDATA[#[vars.getMaterialStockReq]]]></sap:content>
+			</sap:sync-rfc>
+			<ee:transform doc:name="Transform Message"
+				doc:id="fa0030e0-7792-401d-930f-494d407ae0fa">
+				<ee:message>
+				</ee:message>
+				<ee:variables>
+					<ee:set-variable variableName="materialDetails"><![CDATA[%dw 2.0
+output application/java
+---
+vars.materialDetails ++ [{
+	material: payload,
+	price: vars.getMaterialDetailResp.BAPI_MATERIAL_GET_DETAIL.export.MATERIALVALUATIONDATA.MOVING_PR,
+	stock: vars.getMaterialStockResp.BAPI_MATERIAL_STOCK_REQ_LIST.export.MRP_STOCK_DETAIL.UNRESTRICTED_STCK
+}]]]></ee:set-variable>
+				</ee:variables>
+			</ee:transform>
+		</foreach>
+		<ee:transform doc:name="Transform Message"
+			doc:id="f244bb65-cdcb-4cea-95d8-e2b973a25416">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+
+var materials = payload.BAPI_MATERIAL_GETLIST.tables.MATNRLIST.*row
+fun getDetails(material) = 
+	(vars.materialDetails filter $.material == material)[0]
+---
+(materials map (material, i) -> using (details = getDetails(material.MATERIAL))
+    {
+      	id: material.MATERIAL,
+		description: material.MATL_DESC,
+		stock: details.stock,
+		price: details.price
+    }) default []
+]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+</mule>

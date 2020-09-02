@@ -1,0 +1,37 @@
+#%RAML 1.0
+version: v1
+title: SAP Product API
+baseUri: http://localhost:8081/api
+mediaType: application/json
+
+types:
+  Product:
+    properties:
+      id:
+        type: string
+        required: false
+        maxLength: 18
+        example: "JJ_ORTHOCORD"
+      description:
+        type: string
+        maxLength: 100
+        example: "ORTHOCORD® High Strength Orthopaedic Suture"
+      stock:
+        type: number
+        example: 102020
+      price:
+        type: number
+        example: 125.75
+          
+/products:
+  get:
+    queryParameters:
+      query:
+        type: string
+        example: JJ_ORTHOCORD
+    responses:
+      200: 
+        body:
+          type: Product[]
+          
+          
